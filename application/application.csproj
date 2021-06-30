@@ -11,4 +11,10 @@
     <RootNamespace>code_generators</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <AdditionalFiles Include="context.json" />
+    <AdditionalFiles Include=".\templates\class-template.tmpl" />
+    <AdditionalFiles Include=".\templates\property-template.tmpl" />
+  </ItemGroup>
+
 </Project>

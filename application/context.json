@@ -1,0 +1,55 @@
+[{
+        "name": "Employee",
+        "classification": "Class",
+        "type": null,
+        "children": [{
+                "name": "Name",
+                "classification": "Property",
+                "type": "string",
+                "children": null
+            },
+            {
+                "name": "Id",
+                "classification": "Property",
+                "type": "long",
+                "children": null
+            }
+        ]
+    },
+    {
+        "name": "Person",
+        "classification": "Class",
+        "type": null,
+        "children": [{
+                "name": "Name",
+                "classification": "Property",
+                "type": "string",
+                "children": null
+            },
+            {
+                "name": "Id",
+                "classification": "Property",
+                "type": "long",
+                "children": null
+            }
+        ]
+    },
+    {
+        "name": "Person2",
+        "classification": "Class",
+        "type": null,
+        "children": [{
+                "name": "Name",
+                "classification": "Property",
+                "type": "string",
+                "children": null
+            },
+            {
+                "name": "Id",
+                "classification": "Property",
+                "type": "long",
+                "children": null
+            }
+        ]
+    }
+]

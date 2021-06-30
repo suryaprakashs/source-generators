@@ -5,14 +5,19 @@ using Microsoft.CodeAnalysis.Text;
 using System.IO;
 using System.Text.Json;
 using SourceGenerator.Model;
+using System.Collections.Immutable;
+using System.Threading;
+using System.Linq;
+using System;
 
 namespace SourceGenerator
 {
+
     [Generator]
     public class SourceProgram : ISourceGenerator
     {
 
-        private const string Root = @"C:\workspace\neudesic\code-generators\application\templates";
+        private const string Root = @".\";
 
         public void Execute(GeneratorExecutionContext context)
         {
@@ -23,7 +28,8 @@ namespace SourceGenerator
                 PropertyNameCaseInsensitive = true
             };
 
-            var typeModels = JsonSerializer.Deserialize<List<TypeModel>>(File.ReadAllText(@"\context.json"), options);
+            var userContext = LoadFile(context.AdditionalFiles, context.CancellationToken, "context.json");
+            var typeModels = JsonSerializer.Deserialize<List<TypeModel>>(userContext, options);
 
             StringBuilder sourceBuilder = new StringBuilder();
 
@@ -33,15 +39,15 @@ namespace SourceGenerator
 
             foreach (var typeModel in typeModels)
             {
-                string data = GetMatchingType(typeModel);
-                sourceBuilder.Append(data);
+                string source = GetMatchingTypeSource(typeModel, context);
+                sourceBuilder.Append(source);
             }
 
             sourceBuilder.Append("}");
 
-
+            var sourceText = SourceText.From(sourceBuilder.ToString(), Encoding.UTF8);
             // inject the created source into the users compilation
-            context.AddSource("Source.cs", SourceText.From(sourceBuilder.ToString(), Encoding.UTF8));
+            context.AddSource("Source.cs", sourceText);
         }
 
         public void Initialize(GeneratorInitializationContext context)
@@ -49,14 +55,35 @@ namespace SourceGenerator
             // No initialization required
         }
 
-        private string GetMatchingType(TypeModel model)
+        private static string LoadFile(ImmutableArray<AdditionalText> additionalFiles, CancellationToken cancellationToken, string fileName)
         {
-            string template = model.Classification switch
+            var file = additionalFiles.SingleOrDefault(f => string.Compare(Path.GetFileName(f.Path), fileName, StringComparison.OrdinalIgnoreCase) == 0);
+            if (file == null)
             {
-                "Class" => File.ReadAllText(Path.Combine(Root, "class-template.tmpl")),
-                "Property" => File.ReadAllText(Path.Combine(Root, "property-template.tmpl")),
-                _ => ""
-            };
+                return null;
+            }
+
+            var fileText = file.GetText(cancellationToken);
+
+            using (var stream = new MemoryStream())
+            {
+                using (StreamWriter writer = new StreamWriter(stream, Encoding.UTF8, 1024, true))
+                {
+                    fileText.Write(writer, cancellationToken);
+                }
+
+                stream.Position = 0;
+
+                using (var reader = new StreamReader(stream))
+                {
+                    return reader.ReadToEnd();
+                }
+            }
+        }
+
+        private string GetMatchingTypeSource(TypeModel model, GeneratorExecutionContext context)
+        {
+            string template = GetTemplate(model.Classification, context);
 
             if (string.IsNullOrEmpty(template))
             {
@@ -66,7 +93,9 @@ namespace SourceGenerator
             template = template.Replace("{Name}", model.Name);
 
             if (!string.IsNullOrEmpty(model.Type))
+            {
                 template = template.Replace("{Type}", model.Type);
+            }
 
             StringBuilder sourceBuilder = new StringBuilder();
 
@@ -74,7 +103,7 @@ namespace SourceGenerator
             {
                 foreach (var child in model.Children)
                 {
-                    var children = GetMatchingType(child);
+                    var children = GetMatchingTypeSource(child, context);
                     sourceBuilder.Append(children);
                 }
             }
@@ -82,6 +111,16 @@ namespace SourceGenerator
             template = template.Replace("{Children}", sourceBuilder.ToString());
 
             return template;
+        }
+
+        private static string GetTemplate(string classification, GeneratorExecutionContext context)
+        {
+            return classification switch
+            {
+                "Class" => LoadFile(context.AdditionalFiles, context.CancellationToken, "class-template.tmpl"),
+                "Property" => LoadFile(context.AdditionalFiles, context.CancellationToken, "property-template.tmpl"),
+                _ => ""
+            };
         }
     }
 }
