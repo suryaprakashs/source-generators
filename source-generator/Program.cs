@@ -17,10 +17,17 @@ namespace SourceGenerator
     public class SourceProgram : ISourceGenerator
     {
 
-        private const string Root = @".\";
+        static DiagnosticDescriptor InvalidXmlWarning = new DiagnosticDescriptor(id: "CUSTOM001",
+                                                                                title: "Couldn't parse XML file",
+                                                                                messageFormat: "Couldn't parse XML file '{0}'.",
+                                                                                category: "MyGenerator",
+                                                                                DiagnosticSeverity.Warning,
+                                                                                isEnabledByDefault: true);
 
         public void Execute(GeneratorExecutionContext context)
         {
+
+            context.ReportDiagnostic(Diagnostic.Create(InvalidXmlWarning, Location.None, "."));
 
             var options = new JsonSerializerOptions
             {
